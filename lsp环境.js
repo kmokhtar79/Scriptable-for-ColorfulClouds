@@ -300,7 +300,7 @@ class Base {
     * @param {string} locale 地区
     * @return 定位信息
     */
-    async getLocation(locale = "zh_cn") {
+    async getLocation(locale = "en_US") {
         console.log("")
 
         console.log(`----------------------------------------`)
@@ -572,7 +572,7 @@ class Base {
     * @param {DateFormatter} formatter 格式化
     * @param {string} locale 地区
     */
-    getDateStr(date, formatter = "yyyy年MM月d日 EEE", locale = "zh_cn") {
+    getDateStr(date, formatter = "yyyy年MM月d日 EEE", locale = "en_US") {
         const df = new DateFormatter()
         df.locale = locale
         df.dateFormat = formatter
@@ -581,7 +581,7 @@ class Base {
 
     /**
     * 获取组件尺寸宽度大小
-    * @param {string} size 组件尺寸【小号】、【中号】、【大号】
+    * @param {string} size 组件尺寸【small】、【medium】、【large】
     * @param {bool} isIphone12Mini 是否是12mini
     */
     getWidgetWidthSize(size, isIphone12Mini) {
@@ -910,43 +910,25 @@ class Base {
     async transparentBg() {
         if (config.runsInApp) {
             let imgCrop = undefined
-            const tips = "您的小部件背景已准备就绪，退到桌面刷新小组件查看即可"
+            const tips = "Your widget background is ready. Choose where to save the image:"
             // Determine if user has taken the screenshot.
             var message
-            message = "如需实现透明背景请先滑到最右边的空白页并截图"
-            let options = ["继续选择图片", "退出进行截图", "同步远程环境"]
+            message = "Before you start, go to your home screen and enter wiggle mode. Scroll to the empty page on the far right and take a screenshot."
+            let options = ["Continue to select image", "Use Previous Settings (cached)"]
             let response = await this.generateAlert(message, options)
             // Return if we need to exit.
             if (response == 1) return null
 
             // Update the code.
-            if (response == 2) {
-                // Determine if the user is using iCloud.
-                let files = FileManager.local()
-                const iCloudInUse = files.isFileStoredIniCloud(module.filename)
-                // If so, use an iCloud file manager.
-                files = iCloudInUse ? FileManager.iCloud() : files
-                // Try to download the file.
-                try {
-                    const req = new Request("https://gitee.com/enjoyee/scriptable/raw/master/%E6%96%B0%E7%B3%BB%E5%88%97/lsp%E7%8E%AF%E5%A2%83.js")
-                    const codeString = await req.loadString()
-                    files.writeString(module.filename, codeString)
-                    message = "环境脚本已更新，下次运行时生效。"
-                } catch {
-                    message = "更新失败，请稍后再试。"
-                }
-                options = ["好的"]
-                await this.generateAlert(message, options)
-                return
-            }
+            
 
             // Get screenshot and determine phone size.
             let img = await Photos.fromLibrary()
             let height = img.size.height
             let phone = this.phoneSizes()[height]
             if (!phone) {
-                message = "您似乎选择了非iPhone屏幕截图的图像，或者不支持您的iPhone。请使用其他图像再试一次!"
-                await this.generateAlert(message, ["好的"])
+                message = "It looks like you selected an image that isn't an iPhone screenshot, or your iPhone is not supported. Try again with a different image."
+                await this.generateAlert(message, ["OK"])
                 return
             }
 
@@ -963,7 +945,7 @@ class Base {
 
                     // Otherwise, prompt the user.
                 } else {
-                    message = "你使用什么型号的iPhone？"
+                    message = "What type of iPhone do you have? "
                     let types = ["iPhone 12 mini", "iPhone 11 Pro, XS, or X"]
                     let typeIndex = await this.generateAlert(message, types)
                     let type = (typeIndex == 0) ? "mini" : "x"
@@ -973,20 +955,20 @@ class Base {
             }
 
             // Prompt for widget size and position.
-            message = "您想要创建什么尺寸的小部件？"
-            let sizes = ["小号", "中号", "大号"]
+            message = "What size of widget are you creating?"
+            let sizes = ["small", "medium", "large"]
             let size = await this.generateAlert(message, sizes)
             let widgetSize = sizes[size]
 
-            message = "您想它应用在什么位置？"
-            message += (height == 1136 ? " (请注意，您的设备仅支持两行小部件，因此中间和底部选项相同。)" : "")
+            message = "What position will it be in?"
+            message += (height == 1136 ? " (Note that your device only supports two rows of widgets, so the middle and bottom options are the same.)" : "")
 
             // Determine image crop based on phone size.
             let crop = { w: "", h: "", x: "", y: "" }
-            if (widgetSize == "小号") {
-                crop.w = phone.小号
-                crop.h = phone.小号
-                let positions = ["顶部 左边", "顶部 右边", "中间 左边", "中间 右边", "底部 左边", "底部 右边"]
+            if (widgetSize == "small") {
+                crop.w = phone.small
+                crop.h = phone.small
+                let positions = ["top left", "top right", "middle left", "middle right", "bottom left", "bottom right"] 
                 let position = await this.generateAlert(message, positions)
 
                 // Convert the two words into two keys for the phone size dictionary.
@@ -994,31 +976,31 @@ class Base {
                 crop.y = phone[keys[0]]
                 crop.x = phone[keys[1]]
 
-            } else if (widgetSize == "中号") {
-                crop.w = phone.中号
-                crop.h = phone.小号
+            } else if (widgetSize == "medium") {
+                crop.w = phone.medium
+                crop.h = phone.small
 
-                // 中号 and 大号 widgets have a fixed x-value.
-                crop.x = phone.左边
-                let positions = ["顶部", "中间", "底部"]
+                // medium and large widgets have a fixed x-value.
+                crop.x = phone.left
+                let positions = ["top", "middle", "bottom"]
                 let position = await this.generateAlert(message, positions)
                 let key = positions[position].toLowerCase()
                 crop.y = phone[key]
 
-            } else if (widgetSize == "大号") {
-                crop.w = phone.中号
-                crop.h = phone.大号
-                crop.x = phone.左边
-                let positions = ["顶部", "底部"]
+            } else if (widgetSize == "large") {
+                crop.w = phone.medium
+                crop.h = phone.large
+                crop.x = phone.left
+                let positions = ["top", "bottom"]
                 let position = await this.generateAlert(message, positions)
 
-                // 大号 widgets at the 底部 have the "中间" y-value.
-                crop.y = position ? phone.中间 : phone.顶部
+                // large widgets at the bottom have the "middle" y-value.
+                crop.y = position ? phone.middle : phone.top
             }
 
             // Prompt for blur style.
-            message = "您想要一个完全透明的小部件，还是半透明的模糊效果？"
-            let blurOptions = ["透明背景", "浅色模糊", "深色模糊", "完全模糊"]
+            message = "Do you want a fully transparent widget, or a translucent blur effect? "
+            let blurOptions = ["Transparent","Light blur","Dark blur","Just blur"]
             let blurred = await this.generateAlert(message, blurOptions)
 
             // We always need the cropped image.
@@ -1032,7 +1014,7 @@ class Base {
             }
 
             message = tips
-            const exportPhotoOptions = ["完成预览", "导出到相册"]
+            const exportPhotoOptions = ["Export to the files app","Export to the photos app"]
             const exportToPhoto = await this.generateAlert(message, exportPhotoOptions)
 
             if (exportToPhoto) {
@@ -1082,7 +1064,7 @@ class Base {
     * @param {string} style 高斯模糊样式：dark、light
     * @param {number} blur 高斯模糊强度
     */
-    async blurImage(img, crop, style, blur = 150) {
+    async blurImage(img, crop, style, blur = 50) {
         const js = `
             /*
             StackBlur - a fast almost Gaussian Blur For Canvas
@@ -1428,7 +1410,7 @@ class Base {
         
             // Adjust the saturation. 
             const colorful = 2 * hsl[1] * l;
-            const s = hsl[1] * colorful * 1.5;
+            const s = hsl[1] * colorful * 1.1;
         
             return [hsl[0], s, l];
         
@@ -1542,137 +1524,137 @@ class Base {
 
             // 12 Pro Max
             "2778": {
-                小号: 510,
-                中号: 1092,
-                大号: 1146,
-                左边: 96,
-                右边: 678,
-                顶部: 246,
-                中间: 882,
-                底部: 1518
+                small: 510,
+                medium: 1092,
+                large: 1146,
+                left: 96,
+                right: 678,
+                top: 246,
+                middle: 882,
+                bottom: 1518
             },
 
             // 12 and 12 Pro
             "2532": {
-                小号: 474,
-                中号: 1014,
-                大号: 1062,
-                左边: 78,
-                右边: 618,
-                顶部: 231,
-                中间: 819,
-                底部: 1407
+                small: 474,
+                medium: 1014,
+                large: 1062,
+                left: 78,
+                right: 618,
+                top: 231,
+                middle: 819,
+                bottom: 1407
             },
 
             // 11 Pro Max, XS Max
             "2688": {
-                小号: 507,
-                中号: 1080,
-                大号: 1137,
-                左边: 81,
-                右边: 654,
-                顶部: 228,
-                中间: 858,
-                底部: 1488
+                small: 507,
+                medium: 1080,
+                large: 1137,
+                left: 81,
+                right: 654,
+                top: 228,
+                middle: 858,
+                bottom: 1488
             },
 
             // 11, XR
             "1792": {
-                小号: 338,
-                中号: 720,
-                大号: 758,
-                左边: 54,
-                右边: 436,
-                顶部: 160,
-                中间: 580,
-                底部: 1000
+                small: 338,
+                medium: 720,
+                large: 758,
+                left: 54,
+                right: 436,
+                top: 160,
+                middle: 580,
+                bottom: 1000
             },
 
 
             // 11 Pro, XS, X, 12 mini
             "2436": {
                 x: {
-                    小号: 465,
-                    中号: 987,
-                    大号: 1035,
-                    左边: 69,
-                    右边: 591,
-                    顶部: 213,
-                    中间: 783,
-                    底部: 1353,
+                    small: 465,
+                    medium: 987,
+                    large: 1035,
+                    left: 69,
+                    right: 591,
+                    top: 213,
+                    middle: 783,
+                    bottom: 1353,
                 },
 
                 mini: {
-                    小号: 465,
-                    中号: 987,
-                    大号: 1035,
-                    左边: 69,
-                    右边: 591,
-                    顶部: 231,
-                    中间: 801,
-                    底部: 1371,
+                    small: 465,
+                    medium: 987,
+                    large: 1035,
+                    left: 69,
+                    right: 591,
+                    top: 231,
+                    middle: 801,
+                    bottom: 1371,
                 }
 
             },
 
             // Plus phones
             "2208": {
-                小号: 471,
-                中号: 1044,
-                大号: 1071,
-                左边: 99,
-                右边: 672,
-                顶部: 114,
-                中间: 696,
-                底部: 1278
+                small: 471,
+                medium: 1044,
+                large: 1071,
+                left: 99,
+                right: 672,
+                top: 114,
+                middle: 696,
+                bottom: 1278
             },
 
             // SE2 and 6/6S/7/8
             "1334": {
-                小号: 296,
-                中号: 642,
-                大号: 648,
-                左边: 54,
-                右边: 400,
-                顶部: 60,
-                中间: 412,
-                底部: 764
+                small: 296,
+                medium: 642,
+                large: 648,
+                left: 54,
+                right: 400,
+                top: 60,
+                middle: 412,
+                bottom: 764
             },
 
             // SE1
             "1136": {
-                小号: 282,
-                中号: 584,
-                大号: 622,
-                左边: 30,
-                右边: 332,
-                顶部: 59,
-                中间: 399,
-                底部: 399
+                small: 282,
+                medium: 584,
+                large: 622,
+                left: 30,
+                right: 332,
+                top: 59,
+                middle: 399,
+                bottom: 399
             },
 
             // 11 and XR in Display Zoom mode
             "1624": {
-                小号: 310,
-                中号: 658,
-                大号: 690,
-                左边: 46,
-                右边: 394,
-                顶部: 142,
-                中间: 522,
-                底部: 902
+                small: 310,
+                medium: 658,
+                large: 690,
+                left: 46,
+                right: 394,
+                top: 142,
+                middle: 522,
+                bottom: 902
             },
 
             // Plus in Display Zoom mode
             "2001": {
-                小号: 444,
-                中号: 963,
-                大号: 972,
-                左边: 81,
-                右边: 600,
-                顶部: 90,
-                中间: 618,
-                底部: 1146
+                small: 444,
+                medium: 963,
+                large: 972,
+                left: 81,
+                right: 600,
+                top: 90,
+                middle: 618,
+                bottom: 1146
             },
         }
         return phones
