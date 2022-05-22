@@ -1,5 +1,8 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
+// icon-color: purple; icon-glyph: magic;
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
 // icon-color: blue; icon-glyph: user-astronaut;
 /**
 * Author:LSP
@@ -11,22 +14,16 @@ const { Base } = require("./lsp环境")
 
 // @小组件配置
 const widgetConfigs = {
-    // 打开更新，直接同步脚本
-    openDownload: true,
 
     // 彩云key
-    apiKey: "",
+    apiKey: "your api goes here",
     
-    // 农历api，https://www.mxnzp.com/doc/detail?id=1
-    lunarAppid: "jdtjpaqlvaxmpsfi", // 农历相关apikey
-    lunarAppSecret: "NDM2dDFHcml6V21QcEhZSUxBZldQQT09", // 农历相关apikey
-
     // 是否是iPhone12mini
     isIphone12Mini: false,
     // 缓存刷新时间--估算(单位：分钟)
     refreshInterval: 10,
 
-    // 组件样式：1、2(选择样式2推荐打开透明背景开关【selectPicBg:true】)
+    // 组件样式：1)
     widgetStyle: 1,
     // 组件背景样式：1、2、3、4、5、6
     widgetUIBg: 6,
@@ -35,18 +32,10 @@ const widgetConfigs = {
     // 是否使用SF系统天气图标
     useSF: false,
 
-    // 是否显示定位
-    showLocation: true,
     // 是否显示具体天气文本
     showWeatherDesc: true,
-    // 是否显示农历
-    showLunar: true,
-    // 是否显示更新时间
-    showUpdateTime: true,
-    // 备用仓库地址
-    useGithub: false,
 
-    selectPicBg: false, // 透明背景图片
+    selectPicBg: true, // 透明背景图片
     colorBgMode: false,  // 纯色背景模式
     bgColor: Color.black(), // 背景色
 
@@ -60,7 +49,7 @@ const widgetConfigs = {
     // 锁定地区，直接使用上述填写的地址信息不进行定位
     lockLocation: false,
     // 地区
-    locale: "zh-cn",
+    locale: "en_us",
 
     padding: {
         top: 0, // 上边距
@@ -69,9 +58,6 @@ const widgetConfigs = {
         right: 0, // 右边距
     },
 
-    // 英文字体
-    enFontUrl: "https://mashangkaifa.coding.net/p/coding-code-guide/d/coding-code-guide/git/raw/master/HelveticaNeue-Thin.otf",
-
     // 预览模式：0：小尺寸，1：中等尺寸，2：大尺寸，负数：不预览
     previewMode: 1,
 
@@ -79,7 +65,7 @@ const widgetConfigs = {
     // 天气描述
     weatherDesc: {
         CLEAR_DAY: "Sunny",
-        CLEAR_NIGHT: "Sunny",
+        CLEAR_NIGHT: "Clear Sky",
         PARTLY_CLOUDY_DAY: "Cloudy",
         PARTLY_CLOUDY_NIGHT: "Cloudy",
         CLOUDY: "Cloudy",
@@ -538,15 +524,17 @@ class Widget extends Base {
             const comfort = weatherJsonData.result.realtime.life_index.comfort.desc
             weatherInfo.comfort = comfort
             log(`舒适指数：${comfort}`)
+			
+			const wind = weatherJsonData.result.realtime.wind.speed
+            weatherInfo.wind = wind
 
             // 紫外线指数
             const ultraviolet = weatherJsonData.result.realtime.life_index.ultraviolet.desc
             weatherInfo.ultraviolet = ultraviolet
 
             // 空气质量
-            const aqi = weatherJsonData.result.realtime.air_quality.aqi.chn
-            const aqiInfo = this.airQuality(aqi)
-            weatherInfo.aqiInfo = aqiInfo
+            const aqi = weatherJsonData.result.realtime.air_quality.aqi.chn.toString()
+            weatherInfo.aqiInfo = aqi
 
             // 日出日落
             const astro = weatherJsonData.result.daily.astro[0]
@@ -591,129 +579,18 @@ class Widget extends Base {
         // 0-50 优，51-100 良，101-150 轻度污染，151-200 中度污染
         // 201-300 重度污染，>300 严重污染
         if (levelNum >= 0 && levelNum <= 50) {
-            return "优秀"
+            return "fresh"
         } else if (levelNum >= 51 && levelNum <= 100) {
-            return "良好"
+            return "good"
         } else if (levelNum >= 101 && levelNum <= 150) {
-            return "轻度"
+            return "slightly"
         } else if (levelNum >= 151 && levelNum <= 200) {
-            return "中度"
+            return "polluted"
         } else if (levelNum >= 201 && levelNum <= 300) {
-            return "重度"
+            return "seriuos"
         } else {
-            return "严重"
+            return "dengerous"
         }
-    }
-
-    /**
-    * 获取农历信息
-    */
-    async getLunar() {
-        // 日期
-        const currentDate = new Date()
-        const dateStr = this.getDateStr(currentDate, 'yyyyMMdd', widgetConfigs.locale)
-        // 日历
-        const lunarUrl = `https://www.mxnzp.com/api/holiday/single/${dateStr}?app_id=${widgetConfigs.lunarAppid}&app_secret=${widgetConfigs.lunarAppSecret}`
-        const lunarJsonData = await this.httpGet(lunarUrl, true, null, 'lunar')
-        const data = lunarJsonData.data
-        return {
-            yearTips: data.yearTips,
-            infoLunarText: data.lunarCalendar,
-            holidayText: data.solarTerms,
-            typeDes: data.typeDes,
-            chineseZodiac: data.chineseZodiac,
-            avoid: data.avoid,
-            suit: data.suit,
-            weekOfYear: data.dayOfYear,
-            weekOfYear: data.weekOfYear,
-        }
-    }
-
-    /**
-    * 筛选日程
-    * @param {CalendarEvent} schedule 日程
-    * @return 返回符合条件的日程
-    */
-    shouldShowSchedule(schedule) {
-        const currentDate = new Date()
-        // 被取消的日程不用显示
-        if (schedule.title.startsWith("Canceled:")) { return false }
-        // 与当前时间做比较
-        let timeInterval = schedule.endDate.getTime() > currentDate.getTime()
-        // 返回全天跟还没过去的
-        return timeInterval && !schedule.isAllDay
-    }
-
-    /**
-    * 获取手机日程
-    */
-    async getSchedules() {
-        let showSchedules = []
-        const todaySchedules = await CalendarEvent.today([])
-        for (const schedule of todaySchedules) {
-            if (this.shouldShowSchedule(schedule)) {
-                // 日程
-                let scheduleObj = {}
-                // 开始时间
-                const startDate = schedule.startDate
-                // 年
-                const startYear = startDate.getFullYear()
-                // 月
-                const month = startDate.getMonth() + 1
-                // 日
-                const day = startDate.getDate()
-                // 开始小时
-                const startHour = ("0" + startDate.getHours()).slice(-2)
-                // 开始分钟
-                const startMinute = ("0" + startDate.getMinutes()).slice(-2)
-
-                // 结束时间
-                const endDate = schedule.endDate
-                // 结束小时
-                const endHour = ("0" + endDate.getHours()).slice(-2)
-                // 结束分钟
-                const endMinute = ("0" + endDate.getMinutes()).slice(-2)
-
-                // 时间安排展示
-                let timeText = month + "月" + day + "日 " + startHour + ":" + startMinute + "～" + endHour + ":" + endMinute
-                if (schedule.isAllDay) {
-                    timeText = "全天"
-                }
-
-                // 构造格式后的日程
-                scheduleObj.title = schedule.title
-                scheduleObj.timeText = timeText
-                log(`>>日程：${scheduleObj.title} ==> ${timeText}`)
-                showSchedules.push(scheduleObj)
-            }
-        }
-
-        return showSchedules
-    }
-
-    /**
-    * 下载更新
-    */
-    async downloadUpdate() {
-        let files = FileManager.local()
-        const iCloudInUse = files.isFileStoredIniCloud(module.filename)
-        files = iCloudInUse ? FileManager.iCloud() : files
-        let message = ''
-        try {
-            let downloadURL = "https://gitee.com/enjoyee/scriptable/raw/master/%E6%96%B0%E7%B3%BB%E5%88%97/material_weather.js"
-            if (widgetConfigs.useGithub) {
-                downloadURL = "https://raw.githubusercontent.com/Enjoyee/Scriptable/new/%E5%A4%9A%E6%A0%B7%E5%BC%8F%E5%BD%A9%E4%BA%91%E5%A4%A9%E6%B0%94/material_weather.js"
-            }
-            const req = new Request(downloadURL)
-            const codeString = await req.loadString()
-            files.writeString(module.filename, codeString)
-            message = "天气脚本已更新，请退出脚本重新进入运行生效。"
-        } catch {
-            message = "更新失败，请稍后再试。"
-        }
-        const options = ["好的"]
-        await this.generateAlert(message, options)
-        Script.complete()
     }
 
     /**
@@ -765,8 +642,8 @@ class Widget extends Base {
         let weatherIcos = this.weatherIcos()
         //-------------------------------------
         const widget = new ListWidget()
-        widget.addSpacer(20)
-        const widgetWidth = this.getWidgetWidthSize('中号', widgetConfigs.isIphone12Mini)
+        widget.addSpacer(30)
+        const widgetWidth = this.getWidgetWidthSize('medium', widgetConfigs.isIphone12Mini)
         //-------------------------------------
         const currentDate = new Date()
         // 获取天气信息
@@ -777,31 +654,18 @@ class Widget extends Base {
         // 当前信息
         const currentInfoStack = widget.addStack()
         currentInfoStack.layoutHorizontally()
-        currentInfoStack.addSpacer(15)
+        currentInfoStack.addSpacer(20)
         // 
-        const stackTopFont = Font.systemFont(10)
+        const stackTopFont = Font.semiboldMonospacedSystemFont(16)
+		const TempFont = Font.semiboldMonospacedSystemFont(36)
         const temStack = currentInfoStack.addStack()
         temStack.layoutVertically()
-        temStack.addSpacer(10)
+        
         // 定位图标
         let dividerDesc = ''
         const locationStack = temStack.addStack()
         let textWidget = undefined
-        if (widgetConfigs.showLocation) {
-            // 天气
-            locationStack.centerAlignContent()
-            locationStack.addSpacer(3)
-            const locationImg = await this.getImageByUrl("https://s3.ax1x.com/2021/01/24/sH8Hk6.png")
-            const locationImgSpan = locationStack.addImage(locationImg)
-            locationImgSpan.imageSize = new Size(10, 10)
-            // 定位
-            locationStack.addSpacer(7)
-            textWidget = locationStack.addText(`${widgetConfigs.location.subLocality}`)
-            textWidget.textColor = Color.white()
-            textWidget.font = stackTopFont
-
-            dividerDesc = ' • '
-        }
+        
         // 天气文字
         if (widgetConfigs.showWeatherDesc) {
             textWidget = locationStack.addText(`${dividerDesc}${widgetConfigs.weatherDesc[weatherInfo.weatherIco]}`)
@@ -809,94 +673,82 @@ class Widget extends Base {
             textWidget.font = stackTopFont
 
             if (dividerDesc.length == 0) {
-                dividerDesc = ' • '
+                dividerDesc = '   '
             }
         }
         // 农历
-        if (widgetConfigs.showLunar) {
-            const lunarInfo = await this.getLunar()
-            // 农历信息
-            const infoLunarText = lunarInfo.infoLunarText
-            const holidayText = lunarInfo.holidayText
-            let dateFullText = `${infoLunarText}`
-            if (holidayText.length != 0) {
-                dateFullText = `${dateFullText} ⊙ ${holidayText}`
-            }
-            textWidget = locationStack.addText(`${dividerDesc}${dateFullText}`)
-            textWidget.textColor = Color.white()
-            textWidget.font = stackTopFont
-
-            if (dividerDesc.length == 0) {
-                dividerDesc = ' • '
-            }
-        } 
-        if (widgetConfigs.showUpdateTime) {
+//         if (widgetConfigs.showUpdateTime) {
             // 更新时间
-            const updateText = `${this.getDateStr(new Date(), "HH:mm")} ⊹`
-            textWidget = locationStack.addText(`${dividerDesc}${updateText}`)
-            textWidget.textColor = Color.white()
-            textWidget.font = stackTopFont
-            
-            if (dividerDesc.length == 0) {
-                dividerDesc = ' • '
-            }
-        }
+//             const updateText = `${this.getDateStr(new Date(), "HH:mm")} `
+//             textWidget = locationStack.addText(`${dividerDesc}${updateText}`)
+//             textWidget.textColor = Color.white()
+//             textWidget.textOpacity = 0.5
+//             textWidget.font = stackTopFont
+//             
+//             if (dividerDesc.length == 0) {
+//                 dividerDesc = ' • '
+//             }
+//         }
         locationStack.addSpacer()
         // 
-        temStack.addSpacer(15)
-        let image = await this.drawTextWithCustomFont(widgetConfigs.enFontUrl, `${weatherInfo.temperature}°c`, 40, "FFFFFF", "left")
-        let imgSpan = temStack.addImage(image)
-        imgSpan.imageSize = new Size(image.size.width / 2, image.size.height / 2)
-        imgSpan.leftAlignImage()
+         temStack.addSpacer(5)
+        const temp = temStack.addText(`${weatherInfo.temperature}°`)
+        temp.textColor = Color.white()
+        temp.font = TempFont		
         currentInfoStack.addSpacer()
         //------
         const topRightStack = currentInfoStack.addStack()
         topRightStack.layoutVertically()
-        topRightStack.addSpacer(20)
-        const previewSize = new Size(11, 11)
+		topRightStack.centerAlignContent()
+        const iconSize = new Size(15 , 15)
         // 
-        let stackWidth = 60
+        let stackWidth = 90
         const comfort = weatherInfo.comfort
-        if (comfort.length > 2) {
-            stackWidth = 67
-        }
+//         if (comfort.length > 2) {
+//             stackWidth = 67
+//         }
         const singleSize = new Size(stackWidth, 0)
         const comfortStack = topRightStack.addStack()
         comfortStack.layoutHorizontally()
         comfortStack.size = singleSize
-        let img = await this.getImageByUrl("https://s3.ax1x.com/2021/01/23/sHiv9K.png")
-        imgSpan = comfortStack.addImage(img)
-        imgSpan.imageSize = previewSize
-        comfortStack.addSpacer(5)
-        textWidget = comfortStack.addText(`${weatherInfo.comfort}`)
+		let imgSpan = temStack.addStack()
+        imgSpan = comfortStack.addImage(SFSymbol.named('wind').image)
+		imgSpan.tintColor = Color.white()
+        imgSpan.imageSize = iconSize
+        comfortStack.addSpacer(8)
+        textWidget = comfortStack.addText(`${Math.floor(weatherInfo.wind)} KM/H`)
         textWidget.textColor = Color.white()
-        textWidget.font = Font.mediumSystemFont(10)
+        textWidget.font = Font.semiboldMonospacedSystemFont(12)
         comfortStack.addSpacer()
         // -----
-        topRightStack.addSpacer(5)
+        topRightStack.addSpacer(8)
         const aqStack = topRightStack.addStack()
         aqStack.layoutHorizontally()
         aqStack.size = singleSize
-        img = await this.getImageByUrl("https://s3.ax1x.com/2021/01/23/sHPrZR.png")
-        imgSpan = aqStack.addImage(img)
-        imgSpan.imageSize = previewSize
-        aqStack.addSpacer(6)
-        textWidget = aqStack.addText(`${weatherInfo.aqiInfo}`)
+        imgSpan = aqStack.addImage(SFSymbol.named('aqi.medium').image)
+		imgSpan.tintColor = Color.white()
+        imgSpan.imageSize = iconSize
+        aqStack.addSpacer(8)
+        textWidget = aqStack.addText(`AQI ${weatherInfo.aqiInfo}`)
         textWidget.textColor = Color.white()
-        textWidget.font = Font.mediumSystemFont(10)
+        textWidget.font = Font.semiboldMonospacedSystemFont(12)
         aqStack.addSpacer()
         // -----
-        topRightStack.addSpacer(6)
+        topRightStack.addSpacer(8)
         const rainStack = topRightStack.addStack()
         rainStack.layoutHorizontally()
         rainStack.size = singleSize
-        img = await this.getImageByUrl("https://s3.ax1x.com/2021/01/23/sHic0s.png")
-        imgSpan = rainStack.addImage(img)
-        imgSpan.imageSize = previewSize
+		//rainStack.setPadding(3, 1, 3, 1)
+		//rainStack.cornerRadius = 8;
+		//rainStack.backgroundColor = new Color('#ffffff', 0.2);
+        imgSpan = rainStack.addImage(SFSymbol.named('arrow.clockwise').image)
+		imgSpan.tintColor = Color.white()
+        imgSpan.imageSize = iconSize
         rainStack.addSpacer(8)
-        textWidget = rainStack.addText(`${Math.floor(weatherInfo.probability[0] * 100)}%`)
+        const updateText = `${this.getDateStr(new Date(), "HH:mm")}`
+        textWidget = rainStack.addText(`${updateText}`)
         textWidget.textColor = Color.white()
-        textWidget.font = Font.mediumSystemFont(10)
+        textWidget.font = Font.semiboldMonospacedSystemFont(12)
         rainStack.addSpacer()
         topRightStack.addSpacer()
 
@@ -926,17 +778,21 @@ class Widget extends Base {
             let dateText = dailyTemperature.date.slice(8, 10)
             // 替换实时天气icon
             let realtimeIcon = weatherInfo.weatherIco
-            if (dateText == currentDate.getDate()) {
-                dateText = `今天`
+            if (index == 0) {
+                dateText = `Today`   
+				textWidget = dateStack.addText(dateText)
+            textWidget.textColor = Color.orange()
+            textWidget.font = Font.boldMonospacedSystemFont(11)
             } else {
-                dateText = `${dateText}日`
+                dateText = `${dateText}`
                 realtimeIcon = daily.skycon[index].value
-            }
-            textWidget = dateStack.addText(dateText)
+				textWidget = dateStack.addText(dateText)
             textWidget.textColor = Color.white()
-            textWidget.font = Font.systemFont(10)
+            textWidget.font = Font.semiboldMonospacedSystemFont(11)
+            }
+            
             dateStack.addSpacer()
-            itemStack.addSpacer(6)
+            itemStack.addSpacer()
 
             // 天气图标
             let weatherIco = this.getSFSymbol(widgetConfigs.weatherSFIcos[realtimeIcon])
@@ -947,7 +803,7 @@ class Widget extends Base {
             icoStack.layoutHorizontally()
             icoStack.addSpacer()
             let imgStack = icoStack.addImage(weatherIco)
-            imgStack.imageSize = new Size(22, 22)
+            imgStack.imageSize = new Size(28, 28)
             icoStack.addSpacer()
             itemStack.addSpacer(6)
 
@@ -956,9 +812,13 @@ class Widget extends Base {
             temperatureStack.setPadding(0, 0, 0, 0)
             temperatureStack.layoutHorizontally()
             temperatureStack.addSpacer()
-            textWidget = temperatureStack.addText(`${Math.floor(dailyTemperature.min)}/${Math.floor(dailyTemperature.max)}°`)
+            textWidget = temperatureStack.addText(`${Math.floor(dailyTemperature.min)}° `)
             textWidget.textColor = Color.white()
-            textWidget.font = Font.systemFont(11)
+			textWidget.textOpacity = 0.5
+            textWidget.font = Font.systemFont(10)
+			textWidget = temperatureStack.addText(`${Math.floor(dailyTemperature.max)}°`)
+            textWidget.textColor = Color.white()
+            textWidget.font = Font.systemFont(10)
             temperatureStack.addSpacer()
         }
 
@@ -969,163 +829,9 @@ class Widget extends Base {
         if (!selectPicBg) {
             // 天气背景
             let bgImg = await this.getImageByUrl(weatherBgUrls[weatherInfo.weatherIco])
-            bgImg = await this.loadShadowColor2Image(bgImg, new Color("000", 0.3))
+            bgImg = await this.loadShadowColor2Image(bgImg, new Color("000", 0.1))
             await this.saveImgCache(this.scriptName, bgImg)
         }
-        return widget
-    }
-
-    /**
-    * 组件样式2
-    */
-    async renderUIStyle2() {
-        //-------------------------------------
-        // 字体颜色
-        const fontColorHex = "FFFFFF"
-        //-------------------------------------
-        // 天气对应的背景
-        let weatherBgUrls = this.weatherBgUrls()
-        // 天气对应的图标
-        let weatherIcos = this.weatherIcos()
-        //-------------------------------------
-        // 获取天气信息
-        const sizeCount = 6
-        // 六天内天气
-        const weatherInfo = await this.getWeather(sizeCount)
-        // 获取农历信息
-        const lunarInfo = await this.getLunar()
-        //-------------------------------------
-        const widget = new ListWidget()
-        //-------------------------------------
-        let fontUrl = "https://mashangkaifa.coding.net/p/coding-code-guide/d/coding-code-guide/git/raw/master/harmony-2.otf"
-        let image = await this.drawTextWithCustomFont(fontUrl, `${this.getDateStr(new Date(), "EEEE", "en")}`, 40, fontColorHex)
-        let imgSpan = widget.addImage(image)
-        imgSpan.imageSize = new Size(image.size.width / 2, image.size.height / 2)
-        imgSpan.centerAlignImage()
-
-        // 日历信息 
-        widget.addSpacer(10)
-        let stack = widget.addStack()
-        stack.layoutHorizontally()
-        stack.centerAlignContent()
-        stack.addSpacer()
-        const infoLunarText = lunarInfo.infoLunarText
-        const holidayText = lunarInfo.holidayText
-        const dateFullText = `${infoLunarText}`
-        if (holidayText.length != 0) {
-            dateFullText = `${dateFullText} ⊙ ${holidayText}`
-        }
-        fontUrl = "https://mashangkaifa.coding.net/p/coding-code-guide/d/coding-code-guide/git/raw/master/jf-openhuninn-1.0.ttf"
-        let text = `${dateFullText}`
-        image = await this.drawTextWithCustomFont(fontUrl, `${text}`, 14, fontColorHex)
-        imgSpan = stack.addImage(image)
-        imgSpan.imageSize = new Size(image.size.width / 2, image.size.height / 2)
-        imgSpan.centerAlignImage()
-        // 当前日期
-        const dateArr = [
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December"
-        ]
-        const currentDate = new Date()
-        fontUrl = "https://mashangkaifa.coding.net/p/coding-code-guide/d/coding-code-guide/git/raw/master/quicksand_regular.ttf"
-        text = ` ⊙ ${currentDate.getDate()}  ${dateArr[currentDate.getMonth()]}`
-        image = await this.drawTextWithCustomFont(fontUrl, `${text}`, 16, fontColorHex)
-        imgSpan = stack.addImage(image)
-        imgSpan.imageSize = new Size(image.size.width / 2, image.size.height / 2)
-        imgSpan.centerAlignImage()
-        // 电池信息
-        if (holidayText.length == 0) {
-            const batteryLevel = Math.floor(Device.batteryLevel() * 100)
-            text = ` ⊙ ${batteryLevel}%`
-            image = await this.drawTextWithCustomFont(fontUrl, `${text}`, 15, fontColorHex)
-            imgSpan = stack.addImage(image)
-            imgSpan.imageSize = new Size(image.size.width / 2, image.size.height / 2)
-            imgSpan.centerAlignImage()
-        }
-        stack.addSpacer()
-
-        // 当前天气
-        //---------
-        widget.addSpacer(5)
-        stack = widget.addStack()
-        stack.layoutHorizontally()
-        stack.centerAlignContent()
-        stack.addSpacer()
-        //---------
-        let weatherIco = this.getSFSymbol(widgetConfigs.weatherSFIcos[weatherInfo.weatherIco])
-        if (!widgetConfigs.useSF) {
-            weatherIco = await this.getImageByUrl(weatherIcos[weatherInfo.weatherIco])
-        }
-        imgSpan = stack.addImage(weatherIco)
-        imgSpan.imageSize = new Size(23, 23)
-        imgSpan.centerAlignImage()
-        //---------
-        stack.addSpacer(10)
-        text = `${widgetConfigs.weatherDesc[weatherInfo.weatherIco]}  ${weatherInfo.temperature}°`
-        image = await this.drawTextWithCustomFont(fontUrl, `${text}`, 16, fontColorHex)
-        imgSpan = stack.addImage(image)
-        imgSpan.imageSize = new Size(image.size.width / 2, image.size.height / 2)
-        imgSpan.centerAlignImage()
-        //---------
-        // 舒适指数
-        stack.addSpacer(10)
-        image = await this.getImageByUrl("https://s3.ax1x.com/2021/01/23/sHPrZR.png")
-        imgSpan = stack.addImage(image)
-        imgSpan.tintColor = new Color(fontColorHex, 0.8)
-        imgSpan.imageSize = new Size(14, 14)
-        stack.addSpacer(6)
-        text = `${weatherInfo.aqiInfo}`
-        let textWidget = stack.addText(`${text}`)
-        textWidget.textColor = new Color(fontColorHex, 0.8)
-        textWidget.font = Font.lightSystemFont(13)
-        // 降雨率
-        stack.addSpacer(10)
-        image = await this.getImageByUrl("https://s3.ax1x.com/2021/01/23/sHic0s.png")
-        imgSpan = stack.addImage(image)
-        imgSpan.tintColor = new Color(fontColorHex, 0.8)
-        imgSpan.imageSize = new Size(14, 14)
-        stack.addSpacer(6)
-        text = `${Math.floor(weatherInfo.probability[0] * 100)}%`
-        textWidget = stack.addText(`${text}`)
-        textWidget.textColor = new Color(fontColorHex, 0.8)
-        textWidget.font = Font.lightSystemFont(13)
-        //---------
-        stack.addSpacer()
-
-        // 天气预告
-        //---------
-        widget.addSpacer(7)
-        stack = widget.addStack()
-        stack.layoutHorizontally()
-        stack.centerAlignContent()
-        stack.addSpacer()
-        //---------
-        text = `⊱ ${weatherInfo.weatherDesc} ⊰`
-        textWidget = stack.addText(`${text}`)
-        textWidget.textColor = new Color(fontColorHex, 0.8)
-        textWidget.font = Font.lightSystemFont(13)
-        stack.addSpacer()
-
-        //-------------------------------------
-        const selectPicBg = widgetConfigs.selectPicBg
-        this.setSelectPicBg(selectPicBg)
-        if (!selectPicBg) {
-            // 天气背景
-            let bgImg = await this.getImageByUrl(weatherBgUrls[weatherInfo.weatherIco])
-            bgImg = await this.loadShadowColor2Image(bgImg, new Color("333", 0.25))
-            await this.saveImgCache(this.scriptName, bgImg)
-        }
-        //-------------------------------------
         return widget
     }
 
@@ -1147,8 +853,8 @@ class Widget extends Base {
     async render() {
         // 下载更新
         if (widgetConfigs.openDownload && config.runsInApp) {
-            const message = "同步天气远程脚本？"
-            const options = ["运行脚本", "下载脚本"]
+            const message = "sync the script with git?"
+            const options = ["Run", "Download"]
             let typeIndex = await this.generateAlert(message, options)
             if (typeIndex == 1) {
                 await this.downloadUpdate()
